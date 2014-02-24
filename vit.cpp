@@ -5,7 +5,7 @@ using namespace std;
 
 // g++ -I /home/frederik/Boost/ vit.h -std=c++11 vit.cpp -o vit.o && ./vit.o
 map<char, int> obs_map;
-
+double neg_inf = numeric_limits<int>::min(); 
 vit::vit(string f){
 	ifstream mf(f.c_str());
 	if(mf.is_open()){
@@ -107,40 +107,6 @@ vector<vector<double> > vit::viterbi(string str){
 	return res;
 }
 
-vector<vector<double> > vit::log_viterbi(string str){
-	original = str; 
-	int X = str.size();
-	char input[X];
-	strcpy(input, str.c_str());
-	vector< vector<double> > res;
-	vector<double> temp (X);
-	for(int i=0; i<state_size; i++){
-		res.push_back(temp);
-	}
-	int viter[X]; 
-	for(int xs=0; xs<X; xs++){
-		pair<int, double> tmp (0,0);
-		for(int st=0; st<state_size; st++){
-			if(xs>0){
-				vector<double> pc;
-				for(int i=0; i<state_size; i++){
-					pc.push_back(res[i][(xs-1)]);
-				}
-				res[st][xs]=p_log(obs_map[input[xs]], st, pc);
-			} else {
-				res[st][xs]=pb_log(obs_map[input[xs]], st);
-			}
-			if(res[st][xs] > tmp.second){
-				tmp.second = res[st][xs];
-				tmp.first = (st+1);
-			}
-		}
-		viter[xs]=tmp.first;
-	}
-	cout << "Got this far4" << endl;
-	return res;
-}
-
 double vit::pb(int input, int state){
 	double init_p = pi[state]; 
 	double emission_p = phi[state][input];
@@ -159,17 +125,75 @@ double vit::p(int xn, int j, vector<double> prev_calc){
 	return max_so_far;
 }
 
+vector<vector<double> > vit::log_viterbi(string str){
+	original = str; 
+	int X = str.size();
+	char input[X];
+	strcpy(input, str.c_str());
+	vector< vector<double> > res;
+	vector<double> temp (X);
+	for(int i=0; i<state_size; i++){
+		res.push_back(temp);
+	}
+	int viter[X]; 
+	for(int xs=0; xs<X; xs++){
+		pair<int, double> tmp (0,neg_inf);
+		for(int st=0; st<state_size; st++){
+			if(xs>0){
+				vector<double> pc;
+				for(int i=0; i<state_size; i++){
+					pc.push_back(res[i][(xs-1)]);
+				}
+				int bar = obs_map[input[xs]];
+				double foo = p_log(bar, st, pc);
+				res[st][xs]=foo; 
+			} else {
+				res[st][xs]=pb_log(obs_map[input[xs]], st);
+			}
+			// cout << res[st][xs] << " > " << tmp.second << endl;
+			if(res[st][xs] > tmp.second){
+				tmp.second = res[st][xs];
+				tmp.first = (st+1);
+			}
+		}
+		cout << tmp.second << endl;
+		viter[xs]=tmp.first;
+	}
+	for(int i=0; i<X; i++){
+		cout << to_string(viter[i]);
+	}
+	cout << endl;
+	return res;
+}
+
 double vit::pb_log(int input, int state){
 	double tmp = 0;
 	for(int k = 0; k<state_size; k++){
-		tmp = tmp + A[k][0] * (log(pi[k]) + log(phi[k][input])); 
+		if ((pi[k] == 0) || (phi[k][input] == 0)){
+			// tmp = neg_inf;
+		} else {
+			// cout << tmp << " + " << A[k][0] << " * (" << pi[k] << " + " <<  phi[k][input] << ")" << endl;
+			tmp = tmp + A[k][0] * (log(pi[k]) + log(phi[k][input])); 
+		}
 	}
 	return tmp;
 }
 
 double vit::p_log(int xn, int j, vector<double> prev_calc){
-	double max_so_far = *max_element(prev_calc.begin(), prev_calc.end());
-	return (log(phi[j][xn]) + max_so_far + log(A[j-1][j]));
+	double max_so_far = -9999999999;
+	int max_so_far_idx = 0;
+	for(int k=0; k<prev_calc.size(); k++){
+		if(prev_calc[k]>max_so_far){
+			max_so_far = prev_calc[k];
+			max_so_far_idx = k;
+		}
+	}
+	// cout << phi[j][xn] << " + " << max_so_far << " + " <<  A[max_so_far_idx][j] << endl;
+	if (phi[j][xn]==0 || A[max_so_far_idx][j] == 0){
+		return neg_inf;
+	} else {
+		return (log(phi[j][xn]) + max_so_far + log(A[max_so_far_idx][j]));
+	}
 }
 
 string vit::backtrack(vector<vector<double> > input){
@@ -197,10 +221,6 @@ string vit::backtrack(vector<vector<double> > input){
 		}
 		z[i] = tmp; 
 	}
-	// for(pair<int, double> foo : z){
-	// 	cout << foo.first; 
-	// }
-	// cout << endl;
 	string res; 
 	for (pair<int, double> foo : z){
 		res = res + to_string(foo.first);
@@ -233,10 +253,6 @@ string vit::log_backtrack(vector<vector<double> > input){
 		}
 		z[i] = tmp; 
 	}
-	// for(pair<int, double> foo : z){
-	// 	cout << foo.first; 
-	// }
-	// cout << endl;
 	string res; 
 	for (pair<int, double> foo : z){
 		res = res + to_string(foo.first);
@@ -248,8 +264,6 @@ int main(){
 	auto v = new vit("vit_input.txt");
 	auto f = v->viterbi("GTTTCCCAGTGTATATCGAGGGATACTACGTGCATAGTAACATCGGCCAA");
 	cout << v->backtrack(f) << endl;
-	cout << "beginning log: " << endl;
 	f = v->log_viterbi("GTTTCCCAGTGTATATCGAGGGATACTACGTGCATAGTAACATCGGCCAA");
-	cout << "Log_viterbi ran... Beginning backtrack" << endl;
 	cout << v->log_backtrack(f) << endl;
 }
