@@ -104,6 +104,13 @@ vector<vector<double> > vit::viterbi(string str){
 		}
 		viter[xs]=tmp.first;
 	}
+	double min_elm = neg_inf;
+	for(int i =0; i<res.size(); i++){
+		if (res[i][X-1]>min_elm){
+			min_elm = res[i][X-1];
+		}
+	}
+	cout << "prob: " << min_elm << endl; 
 	return res;
 }
 
@@ -150,19 +157,20 @@ vector<vector<double> > vit::log_viterbi(string str){
 			} else {
 				res[st][xs]=pb_log(obs_map[input[xs]], st);
 			}
-			// cout << res[st][xs] << " > " << tmp.second << endl;
 			if(res[st][xs] > tmp.second){
 				tmp.second = res[st][xs];
 				tmp.first = (st+1);
 			}
 		}
-		cout << tmp.second << endl;
 		viter[xs]=tmp.first;
 	}
-	for(int i=0; i<X; i++){
-		cout << to_string(viter[i]);
+	double min_elm = neg_inf;
+	for(int i =0; i<res.size(); i++){
+		if (res[i][X-1]>min_elm){
+			min_elm = res[i][X-1];
+		}
 	}
-	cout << endl;
+	cout << "prob: " << min_elm << endl;
 	return res;
 }
 
@@ -170,9 +178,7 @@ double vit::pb_log(int input, int state){
 	double tmp = 0;
 	for(int k = 0; k<state_size; k++){
 		if ((pi[k] == 0) || (phi[k][input] == 0)){
-			// tmp = neg_inf;
 		} else {
-			// cout << tmp << " + " << A[k][0] << " * (" << pi[k] << " + " <<  phi[k][input] << ")" << endl;
 			tmp = tmp + A[k][0] * (log(pi[k]) + log(phi[k][input])); 
 		}
 	}
@@ -188,7 +194,6 @@ double vit::p_log(int xn, int j, vector<double> prev_calc){
 			max_so_far_idx = k;
 		}
 	}
-	// cout << phi[j][xn] << " + " << max_so_far << " + " <<  A[max_so_far_idx][j] << endl;
 	if (phi[j][xn]==0 || A[max_so_far_idx][j] == 0){
 		return neg_inf;
 	} else {
@@ -240,11 +245,11 @@ string vit::log_backtrack(vector<vector<double> > input){
 	}
 	z[z_size-1] = tmp;
 	for(int i=z_size-2; i>=0; i--){
-		tmp.second = -1;
+		tmp.second = neg_inf;
 		tmp.first = 0;
 		for(int k=0; k<state_size; k++){
 			for(int t=0; t<state_size; t++){
-				double prob = log(phi[z[i+1].first][obs_map[original[i+1]]]) * input[t][i] * log(A[k][z[i+1].first]);
+				double prob = log(phi[z[i+1].first][obs_map[original[i+1]]]) + input[t][i] + log(A[k][z[i+1].first]);
 				if (tmp.second < prob){
 					tmp.second = prob;
 					tmp.first = t+1;
@@ -265,5 +270,7 @@ int main(){
 	auto f = v->viterbi("GTTTCCCAGTGTATATCGAGGGATACTACGTGCATAGTAACATCGGCCAA");
 	cout << v->backtrack(f) << endl;
 	f = v->log_viterbi("GTTTCCCAGTGTATATCGAGGGATACTACGTGCATAGTAACATCGGCCAA");
+	cout << v->log_backtrack(f) << endl;
+	f = v->log_viterbi("TGAGTATCACTTAGGTCTATGTCTAGTCGTCTTTCGTAATGTTTGGTCTTGTCACCAGTTATCCTATGGCGCTCCGAGTCTGGTTCTCGAAATAAGCATCCCCGCCCAAGTCATGCACCCGTTTGTGTTCTTCGCCGACTTGAGCGACTTAATGAGGATGCCACTCGTCACCATCTTGAACATGCCACCAACGAGGTTGCCGCCGTCCATTATAACTACAACCTAGACAATTTTCGCTTTAGGTCCATTCACTAGGCCGAAATCCGCTGGAGTAAGCACAAAGCTCGTATAGGCAAAACCGACTCCATGAGTCTGCCTCCCGACCATTCCCATCAAAATACGCTATCAATACTAAAAAAATGACGGTTCAGCCTCACCCGGATGCTCGAGACAGCACACGGACATGATAGCGAACGTGACCAGTGTAGTGGCCCAGGGGAACCGCCGCGCCATTTTGTTCATGGCCCCGCTGCCGAATATTTCGATCCCAGCTAGAGTAATGACCTGTAGCTTAAACCCACTTTTGGCCCAAACTAGAGCAACAATCGGAATGGCTGAAGTGAATGCCGGCATGCCCTCAGCTCTAAGCGCCTCGATCGCAGTAATGACCGTCTTAACATTAGCTCTCAACGCTATGCAGTGGCTTTGGTGTCGCTTACTACCAGTTCCGAACGTCTCGGGGGTCTTGATGCAGCGCACCACGATGCCAAGCCACGCTGAATCGGGCAGCCAGCAGGATCGTTACAGTCGAGCCCACGGCAATGCGAGCCGTCACGTTGCCGAATATGCACTGCGGGACTACGGACGCAGGGCCGCCAACCATCTGGTTGACGATAGCCAAACACGGTCCAGAGGTGCCCCATCTCGGTTATTTGGATCGTAATTTTTGTGAAGAACACTGCAAACGCAAGTGGCTTTCCAGACTTTACGACTATGTGCCATCATTTAAGGCTACGACCCGGCTTTTAAGACCCCCACCACTAAATAGAGGTACATCTGA");
 	cout << v->log_backtrack(f) << endl;
 }
